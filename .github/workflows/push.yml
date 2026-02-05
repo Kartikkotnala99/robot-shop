@@ -1,19 +1,43 @@
-name: docker-compose-actions-workflow
+name: CI/CD Pipeline for Robot-Shop
+
 on:
   push:
     branches:
-      - 'master'
-    paths-ignore:
-      - 'DCOS/**'
-      - 'K8s/**'
-      - 'load-gen/**'
-      - 'OpenShift/**'
-      - 'Swarm/**'
+      - main
 
 jobs:
-  test:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
-      - name: Build the stack
-        run: docker-compose build
+      # 1️⃣ Checkout the repo
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2️⃣ Configure AWS credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1  # Change if your region is different
+
+      # 3️⃣ Build Docker images using Docker Compose v2
+      - name: Build Docker Containers
+        run: docker compose -f docker-compose.yaml build
+
+      # 4️⃣ Push artifacts to your EC2 or ECR if needed
+      # Optional: Add steps to push images to Amazon ECR
+      # - name: Push Docker Images to ECR
+      #   run: |
+      #     docker compose -f docker-compose.yaml push
+
+      # 5️⃣ Deploy via CodeDeploy
+      - name: Deploy to EC2 via CodeDeploy
+        run: |
+          aws deploy create-deployment \
+            --application-name RobotShopApp \
+            --deployment-group-name RobotShopDG \
+            --github-location repository=Kartikkotnala99/robot-shop,commitId=${{ github.sha }} \
+            --deployment-config-name CodeDeployDefault.OneAtATime \
+            --description "Deploy from GitHub Actions"
