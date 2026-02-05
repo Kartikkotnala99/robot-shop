@@ -1,0 +1,25 @@
+name: CI/CD Pipeline for Robot-Shop
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+      - run: docker compose -f docker-compose.yaml build
+      - run: |
+          aws deploy create-deployment \
+            --application-name RobotShopApp \
+            --deployment-group-name RobotShopDG \
+            --github-location repository=Kartikkotnala99/robot-shop,commitId=${{ github.sha }} \
+            --deployment-config-name CodeDeployDefault.OneAtATime \
+            --description "Deploy from GitHub Actions"
